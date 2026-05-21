@@ -3,7 +3,7 @@
 > Redis MCP 服务器 — 通过 Model Context Protocol 为 AI 助手提供任意 Redis 数据库操作能力。
 
 [![npm version](https://img.shields.io/npm/v/@sanzhangshitou/redis-mcp-server)](https://www.npmjs.com/package/@sanzhangshitou/redis-mcp-server)
-[![license](https://img.shields.io/npm/l/@sanzhangshitou/redis-mcp-server)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![node](https://img.shields.io/node/v/@sanzhangshitou/redis-mcp-server)](package.json)
 
 ## 特性
