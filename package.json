@@ -1,6 +1,6 @@
 {
   "name": "@sanzhangshitou/redis-mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "redis MCP 服务器，为 AI 助手提供 redis 数据库操作能力",
   "keywords": [
     "mcp",

@@ -10,41 +10,6 @@ function jsonText(data: unknown): string {
     return JSON.stringify(data, null, 2);
 }
 
-/**
- * 将 Redis 命令转换为 client 方法名
- * 例如: "GET" -> "get", "CLIENT LIST" -> "clientList", "CONFIG GET" -> "configGet"
- */
-function toMethodName(command: string): string {
-    // 处理空格分隔的多单词命令: "CLIENT LIST" -> "clientList"
-    const spaceParts = command.split(/\s+/);
-    if (spaceParts.length > 1) {
-        return spaceParts
-            .map((part, i) => {
-                const lower = part.toLowerCase();
-                return i === 0 ? lower : lower[0].toUpperCase() + lower.slice(1);
-            })
-            .join("");
-    }
-
-    // 处理单单词复合命令: 按大写字母边界拆分
-    //   "LPUSH" -> ["L", "PUSH"] -> "lPush"
-    //   "HGETALL" -> ["H", "GET", "ALL"] -> "hGetAll"
-    //   "GET" -> ["GET"] -> 无变化，走 fallback
-    const camelMatches = command.match(/[A-Z][a-z0-9]*/g);
-    if (camelMatches && camelMatches.length > 1) {
-        return camelMatches
-            .map((part, i) =>
-                i === 0
-                    ? part.toLowerCase()
-                    : part[0] + part.slice(1).toLowerCase()
-            )
-            .join("");
-    }
-
-    // Fallback: 纯小写（SET, GET, DEL 等）
-    return command.toLowerCase();
-}
-
 // ─── 创建 MCP 服务器 ───────────────────────────────────────────────
 
 const server = new McpServer({
@@ -73,32 +38,9 @@ server.tool(
     async ({ command, args }) => {
         const r = await getClient();
 
-        const methodName = toMethodName(command);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fn = (r as Record<string, any>)[methodName];
-
-        // 先尝试直接调用 node-redis 方法
-        if (typeof fn === "function") {
-            try {
-                const result = await fn.apply(r, args);
-                const text =
-                    result === null || result === undefined
-                        ? "(nil)"
-                        : typeof result === "string"
-                          ? result
-                          : jsonText(result);
-                return {
-                    content: [{ type: "text" as const, text }]
-                };
-            } catch {
-                // 方法存在但调用失败（如 ZADD 需要对象参数），
-                // 回退到 sendCommand
-            }
-        }
-
-        // 回退：使用 sendCommand 发送原始 Redis 命令
-        // sendCommand 接受 [command, ...args] 数组格式
-        const rawArgs = [command.toUpperCase(), ...args];
+        // 统一使用 sendCommand 发送原始 Redis 命令
+        // sendCommand 接受 [command, ...args] 数组，兼容所有 Redis 命令
+        const rawArgs = [command.toUpperCase().replace(/\s+/g, " "), ...args];
         try {
             const result = await r.sendCommand(rawArgs);
             const text =
@@ -112,17 +54,6 @@ server.tool(
             };
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            if (typeof fn !== "function") {
-                return {
-                    content: [
-                        {
-                            type: "text" as const,
-                            text: `未知的 Redis 命令: "${command}" (尝试方法: ${methodName})`
-                        }
-                    ],
-                    isError: true
-                };
-            }
             return {
                 content: [
                     {
